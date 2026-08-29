@@ -1,5 +1,5 @@
 // Content script. Runs inside the YouTube live_chat iframe (and popout chat page).
-// Watches for new chat messages, filters by the configured user/keyword, and
+// Watches for new chat messages, filters by the configured user(s)/keyword(s), and
 // forwards matches to the background service worker.
 
 (function () {
@@ -18,6 +18,7 @@
   let monitor = null;
   let observer = null;
   let listContainer = null;
+  let reportedConnected = false;
 
   init();
 
@@ -35,11 +36,29 @@
       monitor = changes.monitor.newValue;
       // When monitoring is (re)activated, scan messages already on screen.
       if (monitor && monitor.active && !(prev && prev.active)) {
+        reportedConnected = false;
+        maybeReportConnected();
         scanExisting();
       }
     });
 
     waitForList();
+  }
+
+  function report(status) {
+    try {
+      chrome.runtime.sendMessage({ type: "status", status });
+    } catch (_) {
+      /* context may be gone */
+    }
+  }
+
+  function maybeReportConnected() {
+    if (reportedConnected) return;
+    if (listContainer && monitor && monitor.active) {
+      reportedConnected = true;
+      report("connected");
+    }
   }
 
   function getItemsContainer() {
@@ -56,7 +75,7 @@
       startObserving(found);
       return;
     }
-    // Chat may not be rendered yet; retry for a while.
+    report("searching");
     let tries = 0;
     const timer = setInterval(() => {
       tries += 1;
@@ -65,8 +84,8 @@
         clearInterval(timer);
         startObserving(c);
       } else if (tries > 120) {
-        // ~60s of polling; give up quietly.
         clearInterval(timer);
+        report("notfound");
       }
     }, 500);
   }
@@ -83,6 +102,7 @@
       }
     });
     observer.observe(container, { childList: true });
+    maybeReportConnected();
     if (monitor && monitor.active) scanExisting();
   }
 
@@ -122,6 +142,12 @@
     return out.replace(/\s+/g, " ").trim();
   }
 
+  function getAuthorPhoto(el) {
+    const img = el.querySelector("#author-photo img, yt-img-shadow img");
+    if (!img) return "";
+    return img.getAttribute("src") || "";
+  }
+
   function processMessage(el) {
     if (el.dataset && el.dataset.ytmonSeen) return;
     if (el.dataset) el.dataset.ytmonSeen = "1";
@@ -131,7 +157,9 @@
     const chatTime = (el.querySelector("#timestamp")?.textContent || "").trim();
 
     if (!author && !message) return;
-    if (!isMatch(author, message)) return;
+
+    const result = evaluate(author, message);
+    if (!result.ok) return;
 
     const payload = {
       id:
@@ -139,9 +167,12 @@
           ? crypto.randomUUID()
           : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
       author,
+      authorPhoto: getAuthorPhoto(el),
       message,
       chatTime,
       recvTime: Date.now(),
+      matchedKeywords: result.matchedKeywords,
+      type: rendererType(el),
     };
 
     try {
@@ -151,27 +182,47 @@
     }
   }
 
-  function isMatch(author, message) {
+  function rendererType(el) {
+    switch (el.tagName) {
+      case "YT-LIVE-CHAT-PAID-MESSAGE-RENDERER":
+        return "superchat";
+      case "YT-LIVE-CHAT-PAID-STICKER-RENDERER":
+        return "sticker";
+      case "YT-LIVE-CHAT-MEMBERSHIP-ITEM-RENDERER":
+        return "membership";
+      default:
+        return "text";
+    }
+  }
+
+  function evaluate(author, message) {
     const m = monitor;
-    if (!m) return false;
-    const uname = (m.username || "").trim();
-    const kw = (m.keyword || "").trim();
-    if (!uname && !kw) return false; // nothing to match against
+    if (!m) return { ok: false };
 
-    if (uname) {
-      const a = author.toLowerCase();
-      const u = uname.toLowerCase().replace(/^@/, "");
-      const aTrim = a.replace(/^@/, "");
-      const ok = m.usernameContains ? aTrim.includes(u) : aTrim === u;
-      if (!ok) return false;
+    const usernames = m.usernames || [];
+    const keywords = m.keywords || [];
+    if (!usernames.length && !keywords.length) return { ok: false };
+
+    if (usernames.length) {
+      const a = author.toLowerCase().replace(/^@/, "");
+      const matchUser = usernames.some((raw) => {
+        const u = String(raw).toLowerCase().replace(/^@/, "");
+        if (!u) return false;
+        return m.usernameContains ? a.includes(u) : a === u;
+      });
+      if (!matchUser) return { ok: false };
     }
 
-    if (kw) {
+    let matchedKeywords = [];
+    if (keywords.length) {
       const haystack = m.caseSensitive ? message : message.toLowerCase();
-      const needle = m.caseSensitive ? kw : kw.toLowerCase();
-      if (!haystack.includes(needle)) return false;
+      matchedKeywords = keywords.filter((raw) => {
+        const k = m.caseSensitive ? String(raw) : String(raw).toLowerCase();
+        return k && haystack.includes(k);
+      });
+      if (!matchedKeywords.length) return { ok: false };
     }
 
-    return true;
+    return { ok: true, matchedKeywords };
   }
 })();

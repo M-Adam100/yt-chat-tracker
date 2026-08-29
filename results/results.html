@@ -7,54 +7,136 @@
     <link rel="stylesheet" href="results.css" />
   </head>
   <body>
+    <div class="bg-orbs" aria-hidden="true">
+      <span class="orb orb--1"></span>
+      <span class="orb orb--2"></span>
+    </div>
+
     <header class="topbar">
-      <div class="topbar__left">
-        <span class="live-dot" id="liveDot"></span>
-        <h1>Chat Monitor Results</h1>
-        <span id="statusText" class="status-text">Idle</span>
+      <div class="topbar__brand">
+        <div class="logo" aria-hidden="true">
+          <span class="logo__bar"></span>
+          <span class="logo__bar"></span>
+          <span class="logo__bar"></span>
+        </div>
+        <div>
+          <h1>Chat Monitor</h1>
+          <div class="topbar__status">
+            <span class="live-dot" id="liveDot"></span>
+            <span id="statusText">Idle</span>
+          </div>
+        </div>
       </div>
-      <div class="topbar__meta" id="meta"></div>
+      <div class="topbar__filters" id="topFilters"></div>
+      <a id="streamLink" class="btn btn--ghost" target="_blank" rel="noopener" hidden>
+        <svg viewBox="0 0 24 24" class="ico"><path d="M14 3h7v7m0-7L10 14M5 5v14h14v-6"/></svg>
+        Open stream
+      </a>
     </header>
 
-    <section class="controls">
-      <input
-        id="filter"
-        type="text"
-        class="filter"
-        placeholder="Filter results (author or message)…"
-        autocomplete="off"
-      />
-      <div class="controls__right">
-        <label class="autoscroll">
-          <input id="autoScroll" type="checkbox" checked />
-          <span>Auto-scroll</span>
-        </label>
-        <span class="count"><b id="count">0</b> matches</span>
-        <button id="exportTxt" class="btn">Export .txt</button>
-        <button id="exportCsv" class="btn">Export .csv</button>
-        <button id="clearBtn" class="btn btn--danger">Clear</button>
+    <section class="stats" id="stats">
+      <div class="stat-card">
+        <div class="stat-card__ico stat-card__ico--brand">
+          <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </div>
+        <div class="stat-card__body">
+          <span class="stat-card__value" id="statMatches">0</span>
+          <span class="stat-card__label">Matches</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card__ico stat-card__ico--accent">
+          <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M16 5.5a3 3 0 0 1 0 5.5M15 20a6 6 0 0 1 6-2"/></svg>
+        </div>
+        <div class="stat-card__body">
+          <span class="stat-card__value" id="statPeople">0</span>
+          <span class="stat-card__label">People</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card__ico stat-card__ico--green">
+          <svg viewBox="0 0 24 24"><path d="M3 17l5-5 4 4 8-8"/><path d="M15 8h5v5"/></svg>
+        </div>
+        <div class="stat-card__body">
+          <span class="stat-card__value" id="statRate">0</span>
+          <span class="stat-card__label">Matches / min</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card__ico stat-card__ico--amber">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        </div>
+        <div class="stat-card__body">
+          <span class="stat-card__value" id="statElapsed">00:00</span>
+          <span class="stat-card__label">Session</span>
+        </div>
       </div>
     </section>
 
-    <main class="table-wrap" id="tableWrap">
-      <table class="table">
-        <thead>
-          <tr>
-            <th class="col-time">Time</th>
-            <th class="col-author">Person</th>
-            <th class="col-msg">Message</th>
-          </tr>
-        </thead>
-        <tbody id="rows"></tbody>
-      </table>
-      <div id="empty" class="empty">
-        <p>No matches yet.</p>
-        <p class="empty__hint">
-          Start a monitor from the extension popup. Matching messages will appear here
+    <section class="controls">
+      <div class="search">
+        <svg viewBox="0 0 24 24" class="search__ico"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input id="filter" type="text" placeholder="Filter by person or message…" autocomplete="off" />
+        <button id="clearFilter" class="search__clear" hidden aria-label="Clear filter">×</button>
+      </div>
+      <div class="controls__right">
+        <label class="switch switch--sm">
+          <input id="autoScroll" type="checkbox" checked />
+          <span class="switch__track"><span class="switch__thumb"></span></span>
+          <span class="switch__text">Auto-scroll</span>
+        </label>
+
+        <div class="menu">
+          <button id="exportBtn" class="btn btn--soft">
+            <svg viewBox="0 0 24 24" class="ico"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+            Export
+            <svg viewBox="0 0 24 24" class="ico ico--chev"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+          <div id="exportMenu" class="menu__list" hidden>
+            <button data-export="txt">Text (.txt)</button>
+            <button data-export="csv">CSV (.csv)</button>
+            <button data-export="json">JSON (.json)</button>
+            <div class="menu__sep"></div>
+            <button data-export="copy">Copy all to clipboard</button>
+          </div>
+        </div>
+
+        <button id="clearBtn" class="btn btn--danger">
+          <svg viewBox="0 0 24 24" class="ico"><path d="M4 7h16M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2m-9 0 1 13a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2l1-13"/></svg>
+          Clear
+        </button>
+      </div>
+    </section>
+
+    <main class="log-wrap" id="logWrap">
+      <div id="log" class="log"></div>
+
+      <div id="empty" class="state">
+        <div class="state__art">
+          <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </div>
+        <p class="state__title">No matches yet</p>
+        <p class="state__hint">
+          Start a monitor from the extension popup. Matching messages will stream in here
           in real time.
         </p>
       </div>
+
+      <div id="searching" class="state" hidden>
+        <div class="state__art state__art--pulse">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        </div>
+        <p class="state__title">Connecting to live chat…</p>
+        <p class="state__hint">Make sure the stream tab is open and chat is set to <b>Live chat</b>.</p>
+      </div>
     </main>
+
+    <button id="jumpBtn" class="jump" hidden>
+      <svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+      New matches
+    </button>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
     <script src="results.js"></script>
   </body>
