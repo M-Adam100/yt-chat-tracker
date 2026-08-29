@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>YT Live Chat Monitor</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header class="header">
+      <div class="brand">
+        <span class="dot"></span>
+        <h1>Live Chat Monitor</h1>
+      </div>
+      <span id="statusBadge" class="status status--idle">Idle</span>
+    </header>
+
+    <form id="monitorForm" class="form">
+      <label class="field">
+        <span class="field__label">Live stream URL</span>
+        <input
+          id="streamUrl"
+          type="text"
+          placeholder="https://www.youtube.com/watch?v=..."
+          autocomplete="off"
+          spellcheck="false"
+        />
+      </label>
+
+      <label class="field">
+        <span class="field__label">Username to monitor</span>
+        <input
+          id="username"
+          type="text"
+          placeholder="Exact display name (e.g. axewelder)"
+          autocomplete="off"
+          spellcheck="false"
+        />
+      </label>
+
+      <label class="field">
+        <span class="field__label">Keyword</span>
+        <input
+          id="keyword"
+          type="text"
+          placeholder="Word or phrase to look for"
+          autocomplete="off"
+          spellcheck="false"
+        />
+      </label>
+
+      <div class="options">
+        <label class="check">
+          <input id="usernameContains" type="checkbox" />
+          <span>Match username partially</span>
+        </label>
+        <label class="check">
+          <input id="caseSensitive" type="checkbox" />
+          <span>Case-sensitive keyword</span>
+        </label>
+      </div>
+
+      <p id="hint" class="hint"></p>
+
+      <div class="actions">
+        <button id="startBtn" type="submit" class="btn btn--primary">Start monitoring</button>
+        <button id="stopBtn" type="button" class="btn btn--danger" hidden>Stop</button>
+      </div>
+    </form>
+
+    <div class="footer">
+      <button id="openResultsBtn" type="button" class="btn btn--ghost">
+        Open results (<span id="matchCount">0</span>)
+      </button>
+    </div>
+
+    <p class="tip">
+      Tip: in the live chat, switch from <b>Top chat</b> to <b>Live chat</b> so no
+      messages are filtered out.
+    </p>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

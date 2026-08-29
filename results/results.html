@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chat Monitor — Results</title>
+    <link rel="stylesheet" href="results.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="topbar__left">
+        <span class="live-dot" id="liveDot"></span>
+        <h1>Chat Monitor Results</h1>
+        <span id="statusText" class="status-text">Idle</span>
+      </div>
+      <div class="topbar__meta" id="meta"></div>
+    </header>
+
+    <section class="controls">
+      <input
+        id="filter"
+        type="text"
+        class="filter"
+        placeholder="Filter results (author or message)…"
+        autocomplete="off"
+      />
+      <div class="controls__right">
+        <label class="autoscroll">
+          <input id="autoScroll" type="checkbox" checked />
+          <span>Auto-scroll</span>
+        </label>
+        <span class="count"><b id="count">0</b> matches</span>
+        <button id="exportTxt" class="btn">Export .txt</button>
+        <button id="exportCsv" class="btn">Export .csv</button>
+        <button id="clearBtn" class="btn btn--danger">Clear</button>
+      </div>
+    </section>
+
+    <main class="table-wrap" id="tableWrap">
+      <table class="table">
+        <thead>
+          <tr>
+            <th class="col-time">Time</th>
+            <th class="col-author">Person</th>
+            <th class="col-msg">Message</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <div id="empty" class="empty">
+        <p>No matches yet.</p>
+        <p class="empty__hint">
+          Start a monitor from the extension popup. Matching messages will appear here
+          in real time.
+        </p>
+      </div>
+    </main>
+
+    <script src="results.js"></script>
+  </body>
+</html>
