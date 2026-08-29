@@ -22,6 +22,14 @@
 
   init();
 
+  // Let the background worker detect whether this frame has a live content script.
+  chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+    if (msg && msg.type === "ping") {
+      sendResponse({ pong: true });
+      return true;
+    }
+  });
+
   async function init() {
     try {
       const data = await chrome.storage.local.get("monitor");
@@ -43,6 +51,22 @@
     });
 
     waitForList();
+    startWatchdog();
+  }
+
+  // YouTube can replace the chat item container when toggling Top/Live chat,
+  // reconnecting, or reloading. Re-attach the observer if that happens.
+  function startWatchdog() {
+    setInterval(() => {
+      if (!monitor || !monitor.active) return;
+      const current = getItemsContainer();
+      if (current && current !== listContainer) {
+        startObserving(current);
+      } else if (listContainer && !listContainer.isConnected) {
+        const next = getItemsContainer();
+        if (next) startObserving(next);
+      }
+    }, 4000);
   }
 
   function report(status) {

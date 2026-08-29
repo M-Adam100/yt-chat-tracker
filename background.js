@@ -17,6 +17,11 @@ const DEFAULT_MONITOR = {
 
 const DEFAULT_STATUS = { state: "idle", ts: null };
 
+// Identical messages arriving within this window are treated as duplicates
+// (e.g. the same message seen in both an embedded and a popped-out chat frame).
+// Beyond it, a repeat is considered a genuine new message and is kept.
+const DEDUPE_WINDOW_MS = 4000;
+
 // In-memory cache. Rebuilt from storage whenever the worker wakes up.
 let cache = null;
 let writeChain = Promise.resolve();
@@ -40,7 +45,7 @@ async function ensureCache() {
     monitor: { ...DEFAULT_MONITOR, ...(data.monitor || {}) },
     matches,
     status: { ...DEFAULT_STATUS, ...(data.status || {}) },
-    keys: new Set(matches.map(keyOf)),
+    keys: new Map(matches.map((m) => [keyOf(m), m.recvTime || 0])),
   };
   return cache;
 }
@@ -82,8 +87,11 @@ async function addMatch(payload) {
     const c = await ensureCache();
     if (!c.monitor.active) return { added: false, reason: "inactive" };
     const key = keyOf(payload);
-    if (c.keys.has(key)) return { added: false, reason: "duplicate" };
-    c.keys.add(key);
+    const seenAt = c.keys.get(key);
+    const now = payload.recvTime || Date.now();
+    if (seenAt != null && now - seenAt < DEDUPE_WINDOW_MS)
+      return { added: false, reason: "duplicate" };
+    c.keys.set(key, now);
     payload.sessionId = c.monitor.sessionId;
     c.matches.push(payload);
     await chrome.storage.local.set({ matches: c.matches });
@@ -97,7 +105,7 @@ async function startMonitor(config, clearPrevious) {
     const c = await ensureCache();
     if (clearPrevious) {
       c.matches = [];
-      c.keys = new Set();
+      c.keys = new Map();
       await chrome.storage.local.set({ matches: [] });
     }
     c.monitor = {
@@ -138,7 +146,7 @@ async function clearMatches() {
   return enqueue(async () => {
     const c = await ensureCache();
     c.matches = [];
-    c.keys = new Set();
+    c.keys = new Map();
     await chrome.storage.local.set({ matches: [] });
     await updateBadge(0, c.monitor.active);
     return { cleared: true };
@@ -173,6 +181,20 @@ function normalizeStreamUrl(input) {
   return null;
 }
 
+// Ask the tab whether our content script is alive in any of its frames.
+function pingTab(tabId) {
+  return new Promise((resolve) => {
+    try {
+      chrome.tabs.sendMessage(tabId, { type: "ping" }, (resp) => {
+        void chrome.runtime.lastError; // swallow "no receiver" errors
+        resolve(!!(resp && resp.pong));
+      });
+    } catch (_) {
+      resolve(false);
+    }
+  });
+}
+
 async function openStream(streamUrl) {
   const url = normalizeStreamUrl(streamUrl);
   if (!url) return { ok: false, error: "invalid_url" };
@@ -187,7 +209,15 @@ async function openStream(streamUrl) {
           await chrome.windows.update(existing.windowId, { focused: true });
         } catch (_) {}
       }
-      return { ok: true, tabId: existing.id, reused: true };
+      // If the content script isn't present (e.g. the tab predates the
+      // extension), reload so it gets injected and can scan the chat.
+      const alive = await pingTab(existing.id);
+      if (!alive) {
+        try {
+          await chrome.tabs.reload(existing.id);
+        } catch (_) {}
+      }
+      return { ok: true, tabId: existing.id, reused: true, reloaded: !alive };
     }
   }
   const tab = await chrome.tabs.create({ url });

@@ -144,6 +144,7 @@ body > *:not(.bg-orbs) { position: relative; z-index: 1; }
 .controls {
   display: flex; align-items: center; gap: 14px;
   padding: 0 22px 14px;
+  z-index: 25; /* keep the export dropdown above the message log */
 }
 .search { position: relative; flex: 1; max-width: 420px; display: flex; align-items: center; }
 .search__ico {

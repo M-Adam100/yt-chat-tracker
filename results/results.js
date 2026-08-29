@@ -260,10 +260,14 @@ const STATUS_TEXT = {
 
 function renderMeta() {
   const active = !!(monitor && monitor.active);
-  const state = active ? (status && status.state) || "searching" : "idle";
+  const state = active
+    ? (status && status.state) || "searching"
+    : (status && status.state) === "stopped"
+    ? "stopped"
+    : "idle";
   els.liveDot.classList.toggle("is-live", state === "connected");
   els.liveDot.classList.toggle("is-warn", state === "searching" || state === "notfound");
-  els.statusText.textContent = active ? STATUS_TEXT[state] || "Monitoring" : STATUS_TEXT[state] || "Idle";
+  els.statusText.textContent = STATUS_TEXT[state] || "Idle";
 
   els.topFilters.innerHTML = "";
   const users = (monitor && monitor.usernames) || [];
