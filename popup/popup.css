@@ -415,6 +415,27 @@ body > *:not(.bg-orbs) {
 .btn.is-loading .btn__label { opacity: 0.85; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* Persistent results button */
+.btn--results {
+  margin-top: 10px;
+  animation: fade-up 0.5s ease both;
+  animation-delay: 0.1s;
+}
+.btn__count {
+  min-width: 20px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--brand);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.btn__count.is-zero {
+  background: var(--border-2);
+  color: var(--muted);
+}
+
 /* Tip */
 .tip {
   display: flex;

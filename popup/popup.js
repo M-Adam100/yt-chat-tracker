@@ -20,8 +20,15 @@ const els = {
   liveConn: $("liveConn"),
   liveOpenResults: $("liveOpenResults"),
   liveStop: $("liveStop"),
+  openResultsBtn: $("openResultsBtn"),
+  resultsCount: $("resultsCount"),
   toast: $("toast"),
 };
+
+function setResultsCount(n) {
+  els.resultsCount.textContent = n;
+  els.resultsCount.classList.toggle("is-zero", !n);
+}
 
 let startedAt = null;
 let elapsedTimer = null;
@@ -163,6 +170,7 @@ async function refreshState() {
   fillForm(state.monitor);
   const count = state.matches ? state.matches.length : 0;
   els.liveMatches.textContent = count;
+  setResultsCount(count);
   renderStatus(!!state.monitor?.active, state.status?.state);
 }
 
@@ -207,15 +215,19 @@ els.liveStop.addEventListener("click", async () => {
   toast("Monitoring stopped");
 });
 
-els.liveOpenResults.addEventListener("click", async () => {
+async function openResults() {
   await send({ type: "openResults" });
   window.close();
-});
+}
+els.liveOpenResults.addEventListener("click", openResults);
+els.openResultsBtn.addEventListener("click", openResults);
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== "local") return;
   if (changes.matches) {
-    countUp(els.liveMatches, (changes.matches.newValue || []).length);
+    const n = (changes.matches.newValue || []).length;
+    countUp(els.liveMatches, n);
+    setResultsCount(n);
   }
   if (changes.monitor) {
     const mon = changes.monitor.newValue;
