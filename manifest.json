@@ -3,7 +3,7 @@
   "name": "YT Live Chat Monitor",
   "version": "1.0.0",
   "description": "Monitor a YouTube live stream chat for a specific user and/or keyword. View live matches in a results tab and export them to a file.",
-  "permissions": ["storage", "tabs"],
+  "permissions": ["storage", "unlimitedStorage", "tabs"],
   "host_permissions": ["*://www.youtube.com/*"],
   "background": {
     "service_worker": "background.js"
