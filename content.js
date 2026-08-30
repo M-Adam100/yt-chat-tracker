@@ -19,6 +19,7 @@
   let observer = null;
   let listContainer = null;
   let reportedConnected = false;
+  let currentSession = null;
 
   init();
 
@@ -34,19 +35,23 @@
     try {
       const data = await chrome.storage.local.get("monitor");
       monitor = data.monitor || null;
+      currentSession = monitor ? monitor.sessionId : null;
     } catch (_) {
       monitor = null;
     }
 
     chrome.storage.onChanged.addListener((changes, area) => {
       if (area !== "local" || !changes.monitor) return;
-      const prev = monitor;
       monitor = changes.monitor.newValue;
-      // When monitoring is (re)activated, scan messages already on screen.
-      if (monitor && monitor.active && !(prev && prev.active)) {
+      // A new session id means the user (re)started monitoring. Re-scan the
+      // visible backlog on a fresh session; otherwise just adopt the session
+      // and mark existing messages as already-seen so they aren't recaptured.
+      if (monitor && monitor.active && monitor.sessionId !== currentSession) {
+        currentSession = monitor.sessionId;
         reportedConnected = false;
         maybeReportConnected();
-        scanExisting();
+        if (monitor.scanBacklog) scanExisting();
+        else markExistingSeen();
       }
     });
 
@@ -127,7 +132,10 @@
     });
     observer.observe(container, { childList: true });
     maybeReportConnected();
-    if (monitor && monitor.active) scanExisting();
+    if (monitor && monitor.active) {
+      if (monitor.scanBacklog) scanExisting();
+      else markExistingSeen();
+    }
   }
 
   function scanExisting() {
@@ -135,6 +143,26 @@
     if (!container) return;
     for (const child of Array.from(container.children)) {
       handleNode(child);
+    }
+  }
+
+  function resolveRenderer(node) {
+    let el = node;
+    if (!MSG_TAGS.has(el.tagName)) {
+      const inner = el.querySelector ? el.querySelector(INNER_SELECTOR) : null;
+      el = inner || null;
+    }
+    return el;
+  }
+
+  // Stamp currently-visible messages as seen for this session WITHOUT capturing
+  // them (used in append mode so the existing backlog isn't re-added).
+  function markExistingSeen() {
+    const container = listContainer || getItemsContainer();
+    if (!container) return;
+    for (const child of Array.from(container.children)) {
+      const el = resolveRenderer(child);
+      if (el && el.dataset) el.dataset.ytmonSession = currentSession || "s";
     }
   }
 
@@ -173,8 +201,9 @@
   }
 
   function processMessage(el) {
-    if (el.dataset && el.dataset.ytmonSeen) return;
-    if (el.dataset) el.dataset.ytmonSeen = "1";
+    const session = currentSession || "s";
+    if (el.dataset && el.dataset.ytmonSession === session) return;
+    if (el.dataset) el.dataset.ytmonSession = session;
 
     const author = (el.querySelector("#author-name")?.textContent || "").trim();
     const message = extractText(el.querySelector("#message"));

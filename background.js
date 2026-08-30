@@ -11,6 +11,7 @@ const DEFAULT_MONITOR = {
   keywords: [],
   usernameContains: false,
   caseSensitive: false,
+  scanBacklog: true,
   sessionId: null,
   startedAt: null,
 };
@@ -118,6 +119,9 @@ async function startMonitor(config, clearPrevious) {
       keywords: parseList(config.keywords),
       usernameContains: !!config.usernameContains,
       caseSensitive: !!config.caseSensitive,
+      // On a fresh (cleared) session, re-scan the messages already visible in
+      // chat. In append mode, keep prior results and only capture new messages.
+      scanBacklog: !!clearPrevious,
       sessionId:
         typeof crypto !== "undefined" && crypto.randomUUID
           ? crypto.randomUUID()
